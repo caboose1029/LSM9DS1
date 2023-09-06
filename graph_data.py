@@ -57,3 +57,4 @@ except KeyboardInterrupt:
     print("Program Interrupted")
 finally:
     ser.close()  # Remember to close the connection when finished
+
