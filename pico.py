@@ -16,7 +16,12 @@ while True:
     gyro_x, gyro_y, gyro_z = sensor.gyro
 
     # Print values (only prints accel data currently)
-    print("{0:0.3f},{1:0.3f},{2:0.3f}".format(accel_x, accel_y, accel_z))
+    print("{0:0.3f},{1:0.3f},{2:0.3f},\
+           {3:0.3f},{4:0.3f},{5:0.3f},\
+           {6:0.3f},{7:0.3f},{8:0.3f}"\
+          .format(accel_x, accel_y, accel_z,\
+                  mag_x, mag_y, mag_z,
+                  gyro_x, gyro_y, gyro_z))
     
     # Delay for a second.
     time.sleep(0.1)

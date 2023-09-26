@@ -1,12 +1,16 @@
 import serial
 import time
 import collections
-
+import numpy as np
+import math
+from ahrs.filters import QUEST
+from ahrs import Quaternion
 class Config:
 
     start_time = time.time()
     sensor = 'COM4'
     samples_per_second = 10
+    quest_samples = 5
     max_samples = 5 * samples_per_second
 
 def main():
@@ -16,10 +20,15 @@ def main():
     try:
         while True:
             try:
-                processed_data = sensor.read_data()
-                if processed_data:
-                    state = SensorData(processed_data)
-                    print(state.accel_x)
+                sensor_data = sensor.read_data()
+                if sensor_data:
+                    accel_state = sensor_data.accel_state()
+                    mag_state = sensor_data.mag_state()
+                    #gyro_state = sensor_data.gyro_state()
+                    angle = Orientation.quaternion_estimate(accel_state, mag_state)
+                    #angles = ahrs.common.Quaternion.to_angles(orientation)
+                    print(angle)
+
                 else:
                     print("No data recieved")
             except Exception as e:
@@ -48,8 +57,8 @@ class Sensor:
     
     def preprocess_data(self, raw_data):
         processed_data = [float(i) for i in raw_data]
-        SensorData(processed_data)
-        return processed_data
+        sensor_data = SensorData(processed_data)
+        return sensor_data
     
 class SensorData:
     
@@ -57,40 +66,36 @@ class SensorData:
         self.accel_x =  processed_data[0]
         self.accel_y =  processed_data[1]
         self.accel_z =  processed_data[2]
-        self.mag_x =    processed_data[3]
-        self.mag_y =    processed_data[4]
-        self.mag_z =    processed_data[5]
+        self.mag_x =    processed_data[3] * 0.1
+        self.mag_y =    processed_data[4] * 0.1
+        self.mag_z =    processed_data[5] * 0.1
         self.gyro_x =   processed_data[6]
         self.gyro_y =   processed_data[7]
         self.gyro_z =   processed_data[8]
         self.time =     time.time()
 
     def accel_state(self):
-        accel_x = self.accel_x
-        accel_y = self.accel_y
-        accel_z = self.accel_z
+        accel_state = np.array([self.accel_x, self.accel_y, self.accel_z], dtype=float)
+        return accel_state
 
-    def magnet_state(self):
-        mag_x = self.mag_x
-        mag_y = self.mag_y
-        mag_z = self.mag_z
-
+    def mag_state(self):
+        mag_state = np.array([self.mag_x, self.mag_y, self.mag_z], dtype=float)
+        return mag_state
+    
     def gyro_state(self):
-        gyro_x = self.gyro_x
-        gyro_y = self.gyro_y
-        gyro_z = self.gyro_z
-        
-
+        gyro_state = np.array([self.gyro_x, self.gyro_y, self.gyro_z], dtype=float)
+        return gyro_state    
+    
 class DataLogger:
     
     def __init__(self):
-        self.accel_x_values = collections.deque(maxlen=Config.max_samples)
-        self.accel_y_values = collections.deque(maxlen=Config.max_samples)
-        self.accel_z_values = collections.deque(maxlen=Config.max_samples)
+        self.phi = collections.deque(maxlen=Config.max_samples)
+        self.theta = collections.deque(maxlen=Config.max_samples)
+        self.psi = collections.deque(maxlen=Config.max_samples)
         self.elapsed_times = collections.deque(maxlen=Config.max_samples)
         
-    def add_data_point(self):
-        self.accel_x_values.append(SensorData.accel_x)
+    def add_data_point(self, q):
+        self.phi.append(Orientation.q[0])
         self.accel_y_values.append(SensorData.accel_y)
         self.accel_z_values.append(SensorData.accel_z)
         elapsed_time = time.time() - Config.start_time
@@ -101,6 +106,28 @@ class DataLogger:
 
     def plot_data(self):
         pass
+class Orientation:
     
+    def __init__(self):
+        self.angles = np.zeros(1,3)
+        self.time = time.time()
+
+    def quaternion_estimate(accel_state, mag_state):
+        samples = accel_state.shape[0]
+        Q = np.zeros((samples, 4))
+        q = np.zeros((samples, 4))
+        Q[0] = [1.0, 0.0, 0.0, 0.0]
+        quest = QUEST()
+        for t in range(1, samples):
+            Q[t] = quest.estimate(acc=accel_state, mag=mag_state)
+            q = Quaternion(Q[t])
+            angle = q.to_angles() * 180 / math.pi
+        #angles = DataLogger.add_data_point(angle)
+        return angle
+    
+    #def 
+
 if __name__ == "__main__":
     main()
+
+    
