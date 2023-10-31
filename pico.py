@@ -24,7 +24,7 @@ while True:
                   gyro_x, gyro_y, gyro_z))
     
     # Delay for a second.
-    time.sleep(0.1)
+    time.sleep(0.001)
 
 
 #,{0:0.3f},{1:0.3f},{2:0.3f},{0:0.3f},{1:0.3f},{2:0.3f}
